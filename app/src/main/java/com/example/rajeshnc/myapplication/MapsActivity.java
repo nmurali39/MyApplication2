@@ -669,7 +669,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             super.onPostExecute(result);
             // Dismiss the progress dialog
             if (pDialog.isShowing())
-                pDialog.dismiss();
+                pDialog.dismiss();;
 //            startActivity(new Intent( ResgistrationActivity.this,LoginActivity.class));
 //            finish();
             /**
