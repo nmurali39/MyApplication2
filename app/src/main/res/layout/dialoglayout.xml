@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:layout_centerInParent="true"
+    android:background="@color/colorPrimaryDark">
+    <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@color/colorPrimaryDark"
+        android:orientation="vertical">
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Contact Options"
+            android:textColor="#ffff"
+            android:textAlignment="center"
+            android:textSize="25dp"/>
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="25dp" />
+        </LinearLayout>
+    <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+<Button
+    android:layout_width="100dp"
+    android:layout_height="50dp"
+    android:id="@+id/open"
+    android:text="Open"
+    android:textStyle="bold"
+    android:textColor="#ffff"
+    android:background="@color/colorPrimaryDark"/>
+    <Button
+        android:layout_width="100dp"
+        android:layout_height="50dp"
+        android:text="Delete"
+        android:textStyle="bold"
+        android:textColor="#ffff"
+        android:id="@+id/delete"
+        android:background="@color/colorPrimaryDark"/>
+        </LinearLayout>
+</LinearLayout>

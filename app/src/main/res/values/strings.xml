@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">My Application</string>
+    <string name="title_activity_maps">Map</string>
+    <string name="str_tv_location">Current Location</string>
+    <string name="title_activity_resgistration">ResgistrationActivity</string>
+    <string name="title_activity_login">LoginActivity</string>
+</resources>
