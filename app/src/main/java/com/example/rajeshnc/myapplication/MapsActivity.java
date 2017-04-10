@@ -96,12 +96,14 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     String contactName = null;
     private static final int REQUEST_CODE_PICK_CONTACTS = 1, PERMISSION_LOCATION = 1, PERMISSION_CONTACTS = 1, PERMISSIONS_MULTIPLE_REQUEST = 123;
     private Uri uriContact;
-    private String contactID;     // contacts unique ID
+    private String contactID, userName, passWord;     // contacts unique ID
     private String TAG = MapsActivity.class.getSimpleName();
     private static String url = "http://gpslocatorapp.azurewebsites.net/api/GetFriends/";
     private static String urlPostFriend = "http://gpslocatorapp.azurewebsites.net/api/Friend/";
+    private static String urlDeleteFriend = "http://gpslocatorapp.azurewebsites.net/api/DeleteFriend/";
+    private static String urlUpdateContact = "http://gpslocatorapp.azurewebsites.net/api/Contacts/";
     private ProgressDialog pDialog;
-    int id,callingMethod;
+    int id, callingMethod, deleteFriendID;
     GoogleApiClient mGoogleApiClient;
 
 
@@ -118,9 +120,12 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 //                .addApi(Auth.GOOGLE_SIGN_IN_API, gso)
 //                .build();
         String id1 = getIntent().getStringExtra("ContactID").replace("true", "").replace("\n", "");
+        userName = getIntent().getStringExtra("Self");
+        passWord = getIntent().getStringExtra("Zip");
         id1 = id1.replace("\"", "");
         Intent i = getIntent();
         id = Integer.parseInt(id1);
+
         SignInButton signInButton = (SignInButton) findViewById(R.id.sign_in_button);
         signInButton.setSize(SignInButton.SIZE_STANDARD);
         findViewById(R.id.sign_in_button).setOnClickListener(this);
@@ -134,8 +139,10 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             Toast.makeText(this, "Ex:" + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
         db = openOrCreateDatabase("Friends", Context.MODE_PRIVATE, null);
+
         db.execSQL("CREATE TABLE IF NOT EXISTS Friends(id INTEGER PRIMARY KEY AUTOINCREMENT,name VARCHAR,contact VARCHAR,long VARCHAR, lat VARCHAR, URI VARCHAR);");
-        callAsynchronousTask();
+        db.close();
+
     }
 
 
@@ -150,130 +157,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
      */
     @Override
     public void onMapReady(GoogleMap googleMap) {
-        findLatLng();
-        mMap = googleMap;
-        mMap.setMaxZoomPreference(14.0f);
-        LatLng myLoc = new LatLng(latitude, longitude);
-        mMap.addMarker(new MarkerOptions().position(myLoc).title("My Location")).setTag("MyContact");
-
-
-        //   mMap.addMarker(new MarkerOptions()
-        //     .position(myLoc).title("My Location").snippet("Population: 4,627,300")
-        //           .icon(BitmapDescriptorFactory.fromResource(R.drawable.common_google_signin_btn_text_dark)));
-
-        db = openOrCreateDatabase("Friends", Context.MODE_PRIVATE, null);
-        Cursor cursor = db.rawQuery("select * from Friends;", null);
-        int sum = 0;
-        for (cursor.moveToFirst(); !cursor.isAfterLast(); cursor.moveToNext()) {
-            LatLng l = new LatLng(cursor.getDouble(4), cursor.getDouble(3));
-
-            String id, name = "", phone = "", hasPhone = "";
-            int idx;
-            Cursor cursorContact = getContentResolver().query(Uri.parse(cursor.getString(5)), null, null, null, null);
-            if (cursorContact.moveToFirst()) {
-                idx = cursorContact.getColumnIndex(ContactsContract.Contacts._ID);
-                id = cursorContact.getString(idx);
-
-                idx = cursorContact.getColumnIndex(ContactsContract.Contacts.DISPLAY_NAME);
-                name = cursorContact.getString(idx);
-
-                idx = cursorContact.getColumnIndex(ContactsContract.Contacts.PHOTO_THUMBNAIL_URI);
-                hasPhone = cursorContact.getString(idx);
-
-            }
-            mMap.addMarker(new MarkerOptions().position(l).title("FriendLocation").icon(BitmapDescriptorFactory.fromBitmap(((BitmapDrawable) getDrawable(hasPhone)).getBitmap()))).setTag(cursor.getString(2));
-        }
-
-        //      copyFileUsingStream();
-
-        mMap.moveCamera(CameraUpdateFactory.newLatLng(myLoc));
-
-        mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(myLoc, 18.5f));
-
-
-        //Code to add activate maplong listner currently to invoke phone contact book
-
-        mMap.setOnMapLongClickListener(new GoogleMap.OnMapLongClickListener() {
-
-            public static final int PICK_CONTACT = 0;
-            @Override
-            public void onMapLongClick(LatLng arg0) {
-                addContact(arg0);
-            }
-        });
-
-        //Code to add perform SMS/Phone options on when marker is selected
-        mMap.setOnMarkerClickListener(new GoogleMap.OnMarkerClickListener() {
-
-
-            public boolean onMarkerClick(final Marker marker) {
-                if (marker.getTag().toString().equals("MyContact")) {
-                    Toast.makeText(MapsActivity.this, "Please select a Friends Contacts to Open", Toast.LENGTH_SHORT).show();
-                } else {
-                    final Dialog dialog = new Dialog(MapsActivity.this);
-                    dialog.setTitle("Title...");
-                    dialog.setContentView(R.layout.dialoglayout);
-                    Button Open = (Button) dialog.findViewById(R.id.open);
-                    Button Delete = (Button) dialog.findViewById(R.id.delete);
-                    Open.setOnClickListener(new View.OnClickListener() {
-                        @Override
-                        public void onClick(View v) {
-                            if (ContextCompat.checkSelfPermission(MapsActivity.this,
-                                    Manifest.permission.READ_CONTACTS)
-                                    != PackageManager.PERMISSION_GRANTED && ContextCompat.checkSelfPermission(MapsActivity.this,
-                                    Manifest.permission.WRITE_CONTACTS)
-                                    != PackageManager.PERMISSION_GRANTED) {
-                                if (ActivityCompat.shouldShowRequestPermissionRationale(MapsActivity.this,
-                                        Manifest.permission.READ_CONTACTS) && ActivityCompat.shouldShowRequestPermissionRationale(MapsActivity.this,
-                                        Manifest.permission.WRITE_CONTACTS)) {
-
-                                    // Show an explanation to the user *asynchronously* -- don't block
-                                    // this thread waiting for the user's response! After the user
-                                    // sees the explanation, try again to request the permission.
-
-                                } else {
-                                    ActivityCompat.requestPermissions(MapsActivity.this,
-                                            new String[]{Manifest.permission.READ_CONTACTS}, PERMISSION_CONTACTS
-                                    );
-                                    ActivityCompat.requestPermissions(MapsActivity.this,
-                                            new String[]{Manifest.permission.WRITE_CONTACTS}, PERMISSION_CONTACTS
-                                    );
-                                }
-                            } else {
-                                Intent callIntent = new Intent(Intent.ACTION_VIEW);
-                                if (callIntent.resolveActivity(getPackageManager()) != null) {
-
-                                    int phoneContactID = new Random().nextInt();
-                                    if (!marker.getTag().toString().equals("MyContact")) {
-                                        Cursor contactLookupCursor = MapsActivity.this.getContentResolver().query(Uri.withAppendedPath(ContactsContract.PhoneLookup.CONTENT_FILTER_URI, Uri.encode(marker.getTag().toString())), new String[]{ContactsContract.PhoneLookup.DISPLAY_NAME, ContactsContract.PhoneLookup._ID}, null, null, null);
-                                        while (contactLookupCursor.moveToNext()) {
-                                            phoneContactID = contactLookupCursor.getInt(contactLookupCursor.getColumnIndexOrThrow(ContactsContract.PhoneLookup._ID));
-                                        }
-                                        contactLookupCursor.close();
-                                        Uri uri = Uri.withAppendedPath(ContactsContract.Contacts.CONTENT_URI, String.valueOf(phoneContactID));
-                                        callIntent.setData(uri);
-                                        startActivity(callIntent);
-                                        dialog.dismiss();
-                                    } else {
-                                        Toast.makeText(MapsActivity.this, "Please select a Friends Contacts to Open", Toast.LENGTH_SHORT).show();
-                                    }
-                                }
-                            }
-                        }
-                    });
-                    Delete.setOnClickListener(new View.OnClickListener() {
-                        @Override
-                        public void onClick(View v) {
-                            deleteContact(marker.getTag().toString(), "Murali");
-                            dialog.dismiss();
-                        }
-                    });
-                    dialog.show();
-                    }
-                return true;
-            }
-
-        });
+        callAsynchronousTask(googleMap);
     }
 
     //Code to add retrieve phone GPS location
@@ -346,38 +230,50 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 idx = cursor.getColumnIndex(ContactsContract.Contacts.PHOTO_THUMBNAIL_URI);
                 phone = cursor.getString(idx);
             }
-            JSONObject j=new JSONObject();
+            JSONObject j = new JSONObject();
             try {
-                j.put("Self",hasPhone);
+                j.put("Self", hasPhone.replace("+91", ""));
             } catch (JSONException e) {
                 e.printStackTrace();
             }
-            callingMethod=1;
-            String s=null;
+            callingMethod = 1;
+            String s = null;
             try {
-                s=new GetContacts().execute(j).get();
-                s=s.replace("","");
+                s = new GetContacts().execute(j).get();
+                s = s.replace("", "");
             } catch (InterruptedException e) {
                 e.printStackTrace();
             } catch (ExecutionException e) {
                 e.printStackTrace();
             }
-            if(s.contains("Friend is not using Geo Locator app")){}
-            else {
-                JSONObject j1=null;
+            if (s.contains("Friend is not using Geo Locator app")) {
+                Toast.makeText(getApplicationContext(), "Friend is not using Geo Locator app", Toast.LENGTH_LONG).show();
+            } else if (s.contains("Friend is already in friends list")) {
+                Toast.makeText(getApplicationContext(), s, Toast.LENGTH_LONG).show();
+            } else {
+                JSONObject j1 = null;
                 try {
-                     j1=new JSONObject(s);
+                    j1 = new JSONObject(s);
                     String lon = Double.toString(longitude);
                     String lat = Double.toString(latitude);
-                    String query = "INSERT INTO Friends (name,contact,long,lat,URI) VALUES('" +j1.getString("FriendId") + "','" + hasPhone + "','" + lon + "','" + lat + "','" + uriContact + "');";
+                    String query = "INSERT INTO Friends (name,contact,long,lat,URI) VALUES('" + j1.getString("FriendId")+","+j1.getString("ID") + "','" + hasPhone + "','" + lon + "','" + lat + "','" + uriContact + "');";
+                    if(!db.isOpen()) {
+                        db=openOrCreateDatabase("Friends", Context.MODE_PRIVATE, null);
+                    }
                     db.execSQL(query);
-                    mMap.addMarker(new MarkerOptions().position(new LatLng(Double.parseDouble(lat), Double.parseDouble(lon))).title(name).icon(BitmapDescriptorFactory.fromBitmap(((BitmapDrawable) getDrawable(phone)).getBitmap()))).setTag(hasPhone);
+                    mMap.addMarker(new MarkerOptions().position(new LatLng(Double.parseDouble(lat), Double.parseDouble(lon))).title(name).icon(BitmapDescriptorFactory.fromBitmap(((BitmapDrawable) getDrawable(phone)).getBitmap()))).setTag(uriContact + "," +j1.getString("FriendId")+","+j1.getString("ID"));
                     Toast.makeText(getApplicationContext(), name + " Added to friends list", Toast.LENGTH_SHORT).show();
                 } catch (JSONException e) {
                     e.printStackTrace();
                 }
+                finally{
+                    cursor.close();
+                    db.close();
+                }
             }
-            }
+            cursor.close();
+
+        }
         if (requestCode == 2) {
             GoogleSignInResult result = Auth.GoogleSignInApi.getSignInResultFromIntent(data);
             handleSignInResult(result);
@@ -442,7 +338,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             contactID = cursorID.getString(cursorID.getColumnIndex(ContactsContract.Contacts._ID));
         }
 
-        cursorID.close();
+
 
         // Log.d(TAG, "Contact ID: " + contactID);
 
@@ -464,6 +360,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         cursorPhone.close();
         // Toast.makeText(getApplicationContext(),contactID+"here is the phone",Toast.LENGTH_SHORT).show();
         // Log.d(TAG, "Contact Phone Number: " + contactNumber);
+        cursorID.close();
     }
 
     //Code to add retrieve contact names from phone contacts
@@ -502,6 +399,10 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     //Code to retreive contacts from the app db not from main phone contacts
 
     public void viewContact() {
+        if (!db.isOpen())
+        {
+            db=openOrCreateDatabase("Friends", Context.MODE_PRIVATE, null);
+        }
         Cursor c = db.rawQuery("SELECT * FROM friends", null);
 
         if (c.getCount() == 0) {
@@ -512,15 +413,20 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             //Toast.makeText(getApplicationContext(), c.getString(0) + "viewcontact", Toast.LENGTH_SHORT).show();
 
         }
-
+c.close();;
+        db.close();
 
     }
 
     //Code to delete contacts from the app not from main phone contacts
 
     public void deleteContact() {
+        if (!db.isOpen())
+        {
+            db=openOrCreateDatabase("Friends", Context.MODE_PRIVATE, null);
+        }
         db.execSQL("DELETE FROM student WHERE name='" + contactName + "'");
-
+db.close();
         //  Toast.makeText(getApplicationContext(),contactName+"deleted",Toast.LENGTH_SHORT).show();
 
     }
@@ -587,10 +493,13 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             } else {
                 return null; // error in cursor process
             }
+            cur.close();
         } catch (Exception e) {
             e.printStackTrace();
             return null;
+
         }
+
         Uri person = ContentUris.withAppendedId(
                 ContactsContract.Contacts.CONTENT_URI, Long.parseLong(id));
         return Uri.withAppendedPath(person,
@@ -609,11 +518,28 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     }
 
     public void deleteContact(String phoneNumber, String name) {
-        String query = "delete from Friends where contact='" + phoneNumber + "';";
-        db.execSQL(query);
-        mMap.clear();
-        onMapReady(mMap);
-        Toast.makeText(getApplicationContext(), name + ":" + phoneNumber + " Deleted from friends list", Toast.LENGTH_SHORT).show();
+        String s = null;
+        try {
+            callingMethod = 3;
+            deleteFriendID = Integer.parseInt(phoneNumber.split(",")[2]);
+            s = new GetContacts().execute().get();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } catch (ExecutionException e) {
+            e.printStackTrace();
+        }
+        if (s.contains("deleted")) {
+            String query = "delete from Friends where name like'%," + phoneNumber.split(",")[2] + "';";
+            if (!db.isOpen())
+            {
+                db=openOrCreateDatabase("Friends", Context.MODE_PRIVATE, null);
+            }
+            db.execSQL(query);
+            mMap.clear();
+            onMapReady(mMap);
+            Toast.makeText(getApplicationContext(), name + ":" + phoneNumber + " Deleted from friends list", Toast.LENGTH_SHORT).show();
+            db.close();;
+        }
     }
 
     @Override
@@ -643,23 +569,28 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         protected void onPreExecute() {
             super.onPreExecute();
             // Showing progress dialog
-            pDialog = new ProgressDialog(MapsActivity.this);
-            pDialog.setMessage("Please wait...");
-            pDialog.setCancelable(false);
-            pDialog.show();
+//            pDialog = new ProgressDialog(MapsActivity.this);
+//            pDialog.setMessage("Please wait...");
+//            pDialog.setCancelable(false);
+//            pDialog.show();
         }
 
         @Override
         protected String doInBackground(JSONObject... arg0) {
             HttpHandler sh = new HttpHandler();
             // Making a request to url and getting response
-            String jsonStr=null;
-            if (callingMethod==2) {
-                 jsonStr= sh.makeServiceCall(url + id);
+            String jsonStr = null;
+            if (callingMethod == 2) {
+                jsonStr = sh.makeServiceCall(url + id);
             }
-            if (callingMethod==1)
-            {
-                jsonStr = sh.makeServiceCall(urlPostFriend + id,arg0[0]);
+            if (callingMethod == 1) {
+                jsonStr = sh.makeServiceCall(urlPostFriend + id, arg0[0]);
+            }
+            if (callingMethod == 3) {
+                jsonStr = sh.makeServiceCallToDelete(urlDeleteFriend + deleteFriendID);
+            }
+            if (callingMethod == 4) {
+                jsonStr = sh.makeServiceCallToUpdate(urlUpdateContact + id, arg0[0]);
             }
             return jsonStr;
         }
@@ -668,8 +599,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         protected void onPostExecute(String result) {
             super.onPostExecute(result);
             // Dismiss the progress dialog
-            if (pDialog.isShowing())
-                pDialog.dismiss();;
+//            if (pDialog.isShowing())
+//                pDialog.dismiss();
+            ;
 //            startActivity(new Intent( ResgistrationActivity.this,LoginActivity.class));
 //            finish();
             /**
@@ -679,7 +611,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     }
 
-    public void callAsynchronousTask() {
+    public void callAsynchronousTask(final GoogleMap googleMap) {
         final Handler handler = new Handler();
         Timer timer = new Timer();
         TimerTask doAsynchronousTask = new TimerTask() {
@@ -688,32 +620,65 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 handler.post(new Runnable() {
                     public void run() {
                         try {
-                            JSONObject j = new JSONObject();
-                            callingMethod=2;
-                            Response = new GetContacts().execute().get();
-                            JSONArray jar = new JSONArray(Response);
-                            for (int i = 0; i < jar.length(); i++) {
-                                //   LatLng l = new LatLng(Double.parseDouble(""), Double.parseDouble(""));
-                                String id, name = "", phone = "", hasPhone = "";
-                                int idx;
-                                Uri u = Uri.parse(jar.getJSONObject(i).getString("Self"));
-                                Cursor cursorContact = getContentResolver().query(u, null, null, null, null);
+                            LocationManager locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+                            Criteria criteria = new Criteria();
+                            String provider = locationManager.getBestProvider(criteria, false);
 
-                                if (cursorContact.moveToFirst()) {
-                                    idx = cursorContact.getColumnIndex(ContactsContract.Contacts._ID);
-                                    id = cursorContact.getString(idx);
+                            if (ActivityCompat.checkSelfPermission(MapsActivity.this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(MapsActivity.this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                                // TODO: Consider calling
+                                //    ActivityCompat#requestPermissions
+                                // here to request the missing permissions, and then overriding
+                                //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+                                //                                          int[] grantResults)
+                                // to handle the case where the user grants the permission. See the documentation
+                                // for ActivityCompat#requestPermissions for more details.
+                                if (ActivityCompat.shouldShowRequestPermissionRationale(MapsActivity.this,
+                                        Manifest.permission.ACCESS_FINE_LOCATION)) {
 
-                                    idx = cursorContact.getColumnIndex(ContactsContract.Contacts.DISPLAY_NAME);
-                                    name = cursorContact.getString(idx);
+                                    // Show an explanation to the user *asynchronously* -- don't block
+                                    // this thread waiting for the user's response! After the user
+                                    // sees the explanation, try again to request the permission.
 
-                                    idx = cursorContact.getColumnIndex(ContactsContract.Contacts.PHOTO_THUMBNAIL_URI);
-                                    hasPhone = cursorContact.getString(idx);
+                                } else {
 
+                                    // No explanation needed, we can request the permission.
+                                    ActivityCompat.requestPermissions(MapsActivity.this,
+                                            new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, PERMISSION_LOCATION
+                                    );
+                                    ActivityCompat.requestPermissions(MapsActivity.this,
+                                            new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, PERMISSION_LOCATION
+                                    );
+
+                                    // MY_PERMISSIONS_REQUEST_READ_CONTACTS is an
+                                    // app-defined int constant. The callback method gets the
+                                    // result of the request.
                                 }
-//                            mMap.addMarker(new MarkerOptions().position(l).title("FriendLocation").
-//                                    icon(BitmapDescriptorFactory.fromBitmap(((BitmapDrawable) getDrawable("")).getBitmap()))).setTag(new cursor.getString(2)); }
-//                            mMap.addMarker(new MarkerOptions().position(l).title("FriendLocation").
-//                                    icon(BitmapDescriptorFactory.fromBitmap(((BitmapDrawable) getDrawable("")).getBitmap()))).setTag(new cursor.getString(2));
+                            } else {
+                                Location location = locationManager.getLastKnownLocation(provider);
+                                location = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
+                                latitude = location.getLatitude();
+                                longitude = location.getLongitude();
+                                JSONObject j = new JSONObject();
+                                try {
+                                    j.put("ContactId", id);
+                                    j.put("Zip", passWord);
+                                    j.put("Self", userName);
+                                    j.put("Lattitude", latitude);
+                                    j.put("Longitude", longitude);
+                                } catch (JSONException e) {
+                                    e.printStackTrace();
+                                }
+                                callingMethod = 4;
+                                try {
+                                    Response = new GetContacts().execute(j).get();
+                                } catch (InterruptedException e) {
+                                    e.printStackTrace();
+                                } catch (ExecutionException e) {
+                                    e.printStackTrace();
+                                }
+                                Log.d("Response", Response);
+                                Toast.makeText(getApplicationContext(), Response, Toast.LENGTH_SHORT).show();
+                                updateFriendsLocation(googleMap);
                             }
                         } catch (Exception e) {
                             // TODO Auto-generated catch block
@@ -723,6 +688,162 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 });
             }
         };
-        timer.schedule(doAsynchronousTask, 0, 50000); //execute in every 50000 ms
+        timer.schedule(doAsynchronousTask, 0, 10000); //execute in every 50000 ms
     }
+    public void updateFriendsLocation(GoogleMap googleMap)
+    {
+        if (!db.isOpen())
+        {
+            db=openOrCreateDatabase("Friends", Context.MODE_PRIVATE, null);
+        }
+        if(mMap!=null) {
+            mMap.clear();
+        }
+        findLatLng();
+        mMap = googleMap;
+        mMap.setMaxZoomPreference(14.0f);
+        LatLng myLoc = new LatLng(latitude, longitude);
+        mMap.addMarker(new MarkerOptions().position(myLoc).title("My Location")).setTag("MyContact");
+          int sum = 0;
+        String Response=null;
+        JSONArray jar=null;
+        try {
+            callingMethod=2;
+            Response= new GetContacts().execute().get();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } catch (ExecutionException e) {
+            e.printStackTrace();
+        }
+        try {
+            jar=new JSONArray(Response);
+
+
+        for (int i=0;i<jar.length();i++)
+        {
+
+            String qry="select * from Friends where name like'"+jar.getJSONObject(i).getString("ContactId")+",%';";
+            Log.d("Quey",qry);
+            Cursor cursor = db.rawQuery(qry, null);
+
+            for(cursor.moveToFirst();!cursor.isAfterLast(); cursor.moveToNext()) {
+                LatLng l = new LatLng(cursor.getDouble(4), cursor.getDouble(3));
+
+                String id, name = "", phone = "", hasPhone = "";
+                int idx;
+                Cursor cursorContact = getContentResolver().query(Uri.parse(cursor.getString(5)), null, null, null, null);
+                if (cursorContact.moveToFirst()) {
+                    idx = cursorContact.getColumnIndex(ContactsContract.Contacts._ID);
+                    id = cursorContact.getString(idx);
+
+                    idx = cursorContact.getColumnIndex(ContactsContract.Contacts.DISPLAY_NAME);
+                    name = cursorContact.getString(idx);
+
+                    idx = cursorContact.getColumnIndex(ContactsContract.Contacts.PHOTO_THUMBNAIL_URI);
+                    hasPhone = cursorContact.getString(idx);
+
+                }
+                mMap.addMarker(new MarkerOptions().position(l).title("FriendLocation").icon(BitmapDescriptorFactory.fromBitmap(((BitmapDrawable) getDrawable(hasPhone)).getBitmap()))).setTag(cursor.getString(5) + "," + cursor.getString(1));
+            }
+            cursor.close();
+        }
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+
+
+        //      copyFileUsingStream();
+
+        mMap.moveCamera(CameraUpdateFactory.newLatLng(myLoc));
+
+        mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(myLoc, 18.5f));
+
+
+        //Code to add activate maplong listner currently to invoke phone contact book
+
+        mMap.setOnMapLongClickListener(new GoogleMap.OnMapLongClickListener() {
+
+            public static final int PICK_CONTACT = 0;
+
+            @Override
+            public void onMapLongClick(LatLng arg0) {
+                addContact(arg0);
+            }
+        });
+
+        //Code to add perform SMS/Phone options on when marker is selected
+        mMap.setOnMarkerClickListener(new GoogleMap.OnMarkerClickListener() {
+
+
+            public boolean onMarkerClick(final Marker marker) {
+                if (marker.getTag().toString().equals("MyContact")) {
+                    Toast.makeText(MapsActivity.this, "Please select a Friends Contacts to Open", Toast.LENGTH_SHORT).show();
+                } else {
+                    final Dialog dialog = new Dialog(MapsActivity.this);
+                    dialog.setTitle("Title...");
+                    dialog.setContentView(R.layout.dialoglayout);
+                    Button Open = (Button) dialog.findViewById(R.id.open);
+                    Button Delete = (Button) dialog.findViewById(R.id.delete);
+                    Open.setOnClickListener(new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+                            if (ContextCompat.checkSelfPermission(MapsActivity.this,
+                                    Manifest.permission.READ_CONTACTS)
+                                    != PackageManager.PERMISSION_GRANTED && ContextCompat.checkSelfPermission(MapsActivity.this,
+                                    Manifest.permission.WRITE_CONTACTS)
+                                    != PackageManager.PERMISSION_GRANTED) {
+                                if (ActivityCompat.shouldShowRequestPermissionRationale(MapsActivity.this,
+                                        Manifest.permission.READ_CONTACTS) && ActivityCompat.shouldShowRequestPermissionRationale(MapsActivity.this,
+                                        Manifest.permission.WRITE_CONTACTS)) {
+
+                                    // Show an explanation to the user *asynchronously* -- don't block
+                                    // this thread waiting for the user's response! After the user
+                                    // sees the explanation, try again to request the permission.
+
+                                } else {
+                                    ActivityCompat.requestPermissions(MapsActivity.this,
+                                            new String[]{Manifest.permission.READ_CONTACTS}, PERMISSION_CONTACTS
+                                    );
+                                    ActivityCompat.requestPermissions(MapsActivity.this,
+                                            new String[]{Manifest.permission.WRITE_CONTACTS}, PERMISSION_CONTACTS
+                                    );
+                                }
+                            } else {
+                                Intent callIntent = new Intent(Intent.ACTION_VIEW);
+                                if (callIntent.resolveActivity(getPackageManager()) != null) {
+
+                                    int phoneContactID = new Random().nextInt();
+                                    if (!marker.getTag().toString().equals("MyContact")) {
+                                        Cursor contactLookupCursor = MapsActivity.this.getContentResolver().query(Uri.withAppendedPath(ContactsContract.PhoneLookup.CONTENT_FILTER_URI, Uri.encode(marker.getTag().toString().split("'")[0])), new String[]{ContactsContract.PhoneLookup.DISPLAY_NAME, ContactsContract.PhoneLookup._ID}, null, null, null);
+                                        while (contactLookupCursor.moveToNext()) {
+                                            phoneContactID = contactLookupCursor.getInt(contactLookupCursor.getColumnIndexOrThrow(ContactsContract.PhoneLookup._ID));
+                                        }
+                                        Uri uri = Uri.withAppendedPath(ContactsContract.Contacts.CONTENT_URI, String.valueOf(phoneContactID));
+                                        callIntent.setData(uri);
+                                        startActivity(callIntent);
+                                        dialog.dismiss();
+                                        contactLookupCursor.close();;
+                                    } else {
+                                        Toast.makeText(MapsActivity.this, "Please select a Friends Contacts to Open", Toast.LENGTH_SHORT).show();
+                                    }
+                                }
+                            }
+                        }
+                    });
+                    Delete.setOnClickListener(new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+                            deleteContact(marker.getTag().toString(), "Murali");
+                            dialog.dismiss();
+                        }
+                    });
+                    dialog.show();
+                }
+                return true;
+            }
+
+        });
+        db.close();
+    }
+
 }

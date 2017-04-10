@@ -78,7 +78,11 @@ public class LoginActivity extends AppCompatActivity implements View.OnClickList
                         e.printStackTrace();
                     }
                     if(s.contains("true")) {
-                        startActivity(new Intent(this,MapsActivity.class).putExtra("ContactID",s));
+                        Intent i1=new Intent(this,MapsActivity.class).putExtra("ContactID",s);
+                        i1.putExtra("Self",userName);
+                        i1.putExtra("Zip",passWord);
+                        startActivity(i1);
+
                     }
                     else {
                         Toast.makeText(getApplicationContext(), s, Toast.LENGTH_LONG).show();

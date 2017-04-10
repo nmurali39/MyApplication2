@@ -48,6 +48,31 @@ public class HttpHandler {
         }
         return response;
     }
+
+    public String makeServiceCallToDelete(String reqUrl) {
+        String response = null;
+        try {
+
+            URL url = new URL(reqUrl);
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("DELETE");
+
+            // conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
+            // read the response
+            InputStream in = new BufferedInputStream(conn.getInputStream());
+            response = convertStreamToString(in);
+        } catch (MalformedURLException e) {
+            Log.e(TAG, "MalformedURLException: " + e.getMessage());
+        } catch (ProtocolException e) {
+            Log.e(TAG, "ProtocolException: " + e.getMessage());
+        } catch (IOException e) {
+            Log.e(TAG, "IOException: " + e.getMessage());
+        } catch (Exception e) {
+            Log.e(TAG, "Exception: " + e.getMessage());
+        }
+        return response;
+    }
+
     public String makeServiceCall(String reqUrl, JSONObject j) {
         String response = null;
         try {
@@ -74,6 +99,34 @@ public class HttpHandler {
         }
         return response;
     }
+
+    public String makeServiceCallToUpdate(String reqUrl, JSONObject j) {
+        String response = null;
+        try {
+            URL url = new URL(reqUrl);
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("PUT");
+            conn.setDoOutput(true);
+            conn.setDoInput(true);
+            conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
+            OutputStream os = conn.getOutputStream();
+            os.write(j.toString().getBytes("UTF-8"));
+            os.close();
+            // read the response
+            InputStream in = new BufferedInputStream(conn.getInputStream());
+            response = convertStreamToString(in);
+        } catch (MalformedURLException e) {
+            Log.e(TAG, "MalformedURLException: " + e.getMessage());
+        } catch (ProtocolException e) {
+            Log.e(TAG, "ProtocolException: " + e.getMessage());
+        } catch (IOException e) {
+            Log.e(TAG, "IOException: " + e.getMessage());
+        } catch (Exception e) {
+            Log.e(TAG, "Exception: " + e.getMessage());
+        }
+        return response;
+    }
+
     private String convertStreamToString(InputStream is) {
         BufferedReader reader = new BufferedReader(new InputStreamReader(is));
         StringBuilder sb = new StringBuilder();
