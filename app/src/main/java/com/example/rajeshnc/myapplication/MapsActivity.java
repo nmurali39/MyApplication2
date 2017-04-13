@@ -232,7 +232,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             }
             JSONObject j = new JSONObject();
             try {
-                j.put("Self", hasPhone.replace("+91", ""));
+                j.put("Self", hasPhone.replace("+91", "").replace(" ", ""));
             } catch (JSONException e) {
                 e.printStackTrace();
             }
@@ -256,17 +256,16 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                     j1 = new JSONObject(s);
                     String lon = Double.toString(longitude);
                     String lat = Double.toString(latitude);
-                    String query = "INSERT INTO Friends (name,contact,long,lat,URI) VALUES('" + j1.getString("FriendId")+","+j1.getString("ID") + "','" + hasPhone + "','" + lon + "','" + lat + "','" + uriContact + "');";
-                    if(!db.isOpen()) {
-                        db=openOrCreateDatabase("Friends", Context.MODE_PRIVATE, null);
+                    String query = "INSERT INTO Friends (name,contact,long,lat,URI) VALUES('" + j1.getString("FriendId") + "," + j1.getString("ID") + "','" + hasPhone + "','" + lon + "','" + lat + "','" + uriContact + "');";
+                    if (!db.isOpen()) {
+                        db = openOrCreateDatabase("Friends", Context.MODE_PRIVATE, null);
                     }
                     db.execSQL(query);
-                    mMap.addMarker(new MarkerOptions().position(new LatLng(Double.parseDouble(lat), Double.parseDouble(lon))).title(name).icon(BitmapDescriptorFactory.fromBitmap(((BitmapDrawable) getDrawable(phone)).getBitmap()))).setTag(uriContact + "," +j1.getString("FriendId")+","+j1.getString("ID"));
+                    mMap.addMarker(new MarkerOptions().position(new LatLng(Double.parseDouble(lat), Double.parseDouble(lon))).title(name).icon(BitmapDescriptorFactory.fromBitmap(((BitmapDrawable) getDrawable(phone)).getBitmap()))).setTag(uriContact + "," + j1.getString("FriendId") + "," + j1.getString("ID"));
                     Toast.makeText(getApplicationContext(), name + " Added to friends list", Toast.LENGTH_SHORT).show();
                 } catch (JSONException e) {
                     e.printStackTrace();
-                }
-                finally{
+                } finally {
                     cursor.close();
                     db.close();
                 }
@@ -339,7 +338,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         }
 
 
-
         // Log.d(TAG, "Contact ID: " + contactID);
 
         // Using the contact ID now we will get contact phone number
@@ -399,9 +397,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     //Code to retreive contacts from the app db not from main phone contacts
 
     public void viewContact() {
-        if (!db.isOpen())
-        {
-            db=openOrCreateDatabase("Friends", Context.MODE_PRIVATE, null);
+        if (!db.isOpen()) {
+            db = openOrCreateDatabase("Friends", Context.MODE_PRIVATE, null);
         }
         Cursor c = db.rawQuery("SELECT * FROM friends", null);
 
@@ -413,7 +410,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             //Toast.makeText(getApplicationContext(), c.getString(0) + "viewcontact", Toast.LENGTH_SHORT).show();
 
         }
-c.close();;
+        c.close();
+        ;
         db.close();
 
     }
@@ -421,12 +419,11 @@ c.close();;
     //Code to delete contacts from the app not from main phone contacts
 
     public void deleteContact() {
-        if (!db.isOpen())
-        {
-            db=openOrCreateDatabase("Friends", Context.MODE_PRIVATE, null);
+        if (!db.isOpen()) {
+            db = openOrCreateDatabase("Friends", Context.MODE_PRIVATE, null);
         }
         db.execSQL("DELETE FROM student WHERE name='" + contactName + "'");
-db.close();
+        db.close();
         //  Toast.makeText(getApplicationContext(),contactName+"deleted",Toast.LENGTH_SHORT).show();
 
     }
@@ -530,15 +527,15 @@ db.close();
         }
         if (s.contains("deleted")) {
             String query = "delete from Friends where name like'%," + phoneNumber.split(",")[2] + "';";
-            if (!db.isOpen())
-            {
-                db=openOrCreateDatabase("Friends", Context.MODE_PRIVATE, null);
+            if (!db.isOpen()) {
+                db = openOrCreateDatabase("Friends", Context.MODE_PRIVATE, null);
             }
             db.execSQL(query);
             mMap.clear();
             onMapReady(mMap);
             Toast.makeText(getApplicationContext(), name + ":" + phoneNumber + " Deleted from friends list", Toast.LENGTH_SHORT).show();
-            db.close();;
+            db.close();
+            ;
         }
     }
 
@@ -678,7 +675,7 @@ db.close();
                                 }
                                 Log.d("Response", Response);
                                 Toast.makeText(getApplicationContext(), Response, Toast.LENGTH_SHORT).show();
-                                updateFriendsLocation(googleMap);
+                                updateFriendsLocation(googleMap, Response);
                             }
                         } catch (Exception e) {
                             // TODO Auto-generated catch block
@@ -690,13 +687,12 @@ db.close();
         };
         timer.schedule(doAsynchronousTask, 0, 10000); //execute in every 50000 ms
     }
-    public void updateFriendsLocation(GoogleMap googleMap)
-    {
-        if (!db.isOpen())
-        {
-            db=openOrCreateDatabase("Friends", Context.MODE_PRIVATE, null);
+
+    public void updateFriendsLocation(GoogleMap googleMap, String friends) {
+        if (!db.isOpen()) {
+            db = openOrCreateDatabase("Friends", Context.MODE_PRIVATE, null);
         }
-        if(mMap!=null) {
+        if (mMap != null) {
             mMap.clear();
         }
         findLatLng();
@@ -704,49 +700,42 @@ db.close();
         mMap.setMaxZoomPreference(14.0f);
         LatLng myLoc = new LatLng(latitude, longitude);
         mMap.addMarker(new MarkerOptions().position(myLoc).title("My Location")).setTag("MyContact");
-          int sum = 0;
-        String Response=null;
-        JSONArray jar=null;
+        int sum = 0;
+
+        JSONArray jar = null;
+
+
         try {
-            callingMethod=2;
-            Response= new GetContacts().execute().get();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        } catch (ExecutionException e) {
-            e.printStackTrace();
-        }
-        try {
-            jar=new JSONArray(Response);
+            jar = new JSONArray(friends);
 
 
-        for (int i=0;i<jar.length();i++)
-        {
+            for (int i = 0; i < jar.length(); i++) {
 
-            String qry="select * from Friends where name like'"+jar.getJSONObject(i).getString("ContactId")+",%';";
-            Log.d("Quey",qry);
-            Cursor cursor = db.rawQuery(qry, null);
+                String qry = "select * from Friends where name like'" + jar.getJSONObject(i).getString("ContactId") + ",%';";
+                Log.d("Quey", qry);
+                Cursor cursor = db.rawQuery(qry, null);
 
-            for(cursor.moveToFirst();!cursor.isAfterLast(); cursor.moveToNext()) {
-                LatLng l = new LatLng(cursor.getDouble(4), cursor.getDouble(3));
+                for (cursor.moveToFirst(); !cursor.isAfterLast(); cursor.moveToNext()) {
+                    LatLng l = new LatLng(jar.getJSONObject(i).getDouble("Lattitude"), jar.getJSONObject(i).getDouble("Longitude"));
 
-                String id, name = "", phone = "", hasPhone = "";
-                int idx;
-                Cursor cursorContact = getContentResolver().query(Uri.parse(cursor.getString(5)), null, null, null, null);
-                if (cursorContact.moveToFirst()) {
-                    idx = cursorContact.getColumnIndex(ContactsContract.Contacts._ID);
-                    id = cursorContact.getString(idx);
+                    String id, name = "", phone = "", hasPhone = "";
+                    int idx;
+                    Cursor cursorContact = getContentResolver().query(Uri.parse(cursor.getString(5)), null, null, null, null);
+                    if (cursorContact.moveToFirst()) {
+                        idx = cursorContact.getColumnIndex(ContactsContract.Contacts._ID);
+                        id = cursorContact.getString(idx);
 
-                    idx = cursorContact.getColumnIndex(ContactsContract.Contacts.DISPLAY_NAME);
-                    name = cursorContact.getString(idx);
+                        idx = cursorContact.getColumnIndex(ContactsContract.Contacts.DISPLAY_NAME);
+                        name = cursorContact.getString(idx);
 
-                    idx = cursorContact.getColumnIndex(ContactsContract.Contacts.PHOTO_THUMBNAIL_URI);
-                    hasPhone = cursorContact.getString(idx);
+                        idx = cursorContact.getColumnIndex(ContactsContract.Contacts.PHOTO_THUMBNAIL_URI);
+                        hasPhone = cursorContact.getString(idx);
 
+                    }
+                    mMap.addMarker(new MarkerOptions().position(l).title("FriendLocation").icon(BitmapDescriptorFactory.fromBitmap(((BitmapDrawable) getDrawable(hasPhone)).getBitmap()))).setTag(cursor.getString(5) + "," + cursor.getString(1));
                 }
-                mMap.addMarker(new MarkerOptions().position(l).title("FriendLocation").icon(BitmapDescriptorFactory.fromBitmap(((BitmapDrawable) getDrawable(hasPhone)).getBitmap()))).setTag(cursor.getString(5) + "," + cursor.getString(1));
+                cursor.close();
             }
-            cursor.close();
-        }
         } catch (JSONException e) {
             e.printStackTrace();
         }
@@ -822,7 +811,8 @@ db.close();
                                         callIntent.setData(uri);
                                         startActivity(callIntent);
                                         dialog.dismiss();
-                                        contactLookupCursor.close();;
+                                        contactLookupCursor.close();
+                                        ;
                                     } else {
                                         Toast.makeText(MapsActivity.this, "Please select a Friends Contacts to Open", Toast.LENGTH_SHORT).show();
                                     }

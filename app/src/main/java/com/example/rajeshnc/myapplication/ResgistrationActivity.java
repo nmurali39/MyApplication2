@@ -44,6 +44,8 @@ public class ResgistrationActivity extends AppCompatActivity implements View.OnC
                     j.put("Name",name);
                     j.put("Self",mobNumber);
                     j.put("Zip",password);
+                    j.put("Lattitude",0);
+                    j.put("Longitude",0);
                 } catch (JSONException e) {
                     e.printStackTrace();
                 }
